@@ -1,4 +1,5 @@
 const Order = require("../models/Order");
+const User = require("../models/User");
 
 function generateOrderNumber() {
   const now = new Date();
@@ -31,9 +32,16 @@ exports.addOrder = async (req, res) => {
 
     await order.save();
 
-    // Notifier l'admin via socket
+    const user = await User.findById(req.auth.userId);
+
+    // Notifier les admins via socket
     const io = req.app.get("io");
-    if (io) io.emit("newOrder", order);
+    if (io) {
+      io.to("admin").emit("newOrder", {
+        ...order.toObject(),
+        customerName: user?.name || "Client",
+      });
+    }
 
     res.status(201).json({ status: 0, order });
   } catch (err) {
@@ -110,7 +118,30 @@ exports.updateStatus = async (req, res) => {
     const order = await Order.findById(req.params.id);
 
     const io = req.app.get("io");
-    if (io) io.emit("orderUpdated", order);
+    const connectedUsers = req.app.get("connectedUsers");
+
+    if (io) {
+      // Notifier le client de la mise à jour
+      const statusLabels = {
+        en_preparation: "Votre commande est en cours de préparation",
+        prete: "Votre commande est prête ! Venez la récupérer",
+        recuperee: "Commande récupérée. Merci !",
+        annulee: "Votre commande a été annulée",
+      };
+
+      const clientSocket = connectedUsers?.get(order.userId.toString());
+      if (clientSocket) {
+        io.to(clientSocket.socketId).emit("orderStatusChanged", {
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          status,
+          message: statusLabels[status] || "Statut mis à jour",
+        });
+      }
+
+      // Notifier tous les admins
+      io.to("admin").emit("orderUpdated", order);
+    }
 
     res.status(200).json({ status: 0, order });
   } catch (err) {

@@ -47,6 +47,13 @@ exports.signup = async (req, res) => {
     const hash = await bcrypt.hash(password, 10);
     const user = new User({ name, email, password: hash, phone });
     await user.save();
+
+    // Notifier les admins d'un nouveau client
+    const io = req.app.get("io");
+    if (io) {
+      io.to("admin").emit("newClient", { name: user.name, email: user.email, date: user.date });
+    }
+
     const token = jwt.sign({ userId: user._id }, process.env.CODETOKEN);
     res.status(201).json({ status: 0, user, token });
   } catch (err) {
