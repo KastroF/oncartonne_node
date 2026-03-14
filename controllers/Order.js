@@ -1,5 +1,6 @@
 const Order = require("../models/Order");
 const User = require("../models/User");
+const { sendNotificationToUser } = require("../utils/fcm");
 
 function generateOrderNumber() {
   const now = new Date();
@@ -141,6 +142,27 @@ exports.updateStatus = async (req, res) => {
 
       // Notifier tous les admins
       io.to("admin").emit("orderUpdated", order);
+    }
+
+    // Notification push FCM au client
+    try {
+      const statusLabels = {
+        en_preparation: "Votre commande est en cours de préparation",
+        prete: "Votre commande est prête ! Venez la récupérer",
+        recuperee: "Commande récupérée. Merci !",
+        annulee: "Votre commande a été annulée",
+      };
+      if (statusLabels[status]) {
+        await sendNotificationToUser(
+          order.userId.toString(),
+          "OnCartonne - Commande " + order.orderNumber,
+          statusLabels[status],
+          1,
+          { orderId: order._id.toString(), type: "order_status" }
+        );
+      }
+    } catch (pushErr) {
+      console.log("Erreur push notification:", pushErr.message);
     }
 
     res.status(200).json({ status: 0, order });

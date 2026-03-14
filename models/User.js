@@ -9,6 +9,7 @@ const userSchema = new mongoose.Schema({
   photo: { type: String },
   userActive: { type: Boolean, default: true },
   appleId: { type: String, unique: true, sparse: true },
+  fcmToken: { type: Array, default: [] },
   date: { type: Date, default: Date.now },
 });
 

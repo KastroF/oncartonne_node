@@ -9,6 +9,7 @@ const categoryRoutes = require("./routes/Category");
 const storeRoutes = require("./routes/Store");
 const orderRoutes = require("./routes/Order");
 const messageRoutes = require("./routes/Message");
+const deviceTokenRoutes = require("./routes/DeviceToken");
 
 const app = express();
 
@@ -32,5 +33,6 @@ app.use("/api/category", categoryRoutes);
 app.use("/api/store", storeRoutes);
 app.use("/api/order", orderRoutes);
 app.use("/api/message", messageRoutes);
+app.use("/api/devicetoken", deviceTokenRoutes);
 
 module.exports = app;

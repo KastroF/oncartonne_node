@@ -11,11 +11,13 @@
     "node": "20.x"
   },
   "dependencies": {
+    "axios": "^1.13.6",
     "bcrypt": "^6.0.0",
     "cloudinary": "^1.41.3",
     "cors": "^2.8.5",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
+    "google-auth-library": "^10.6.1",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.13.2",
     "multer": "^2.0.2",
