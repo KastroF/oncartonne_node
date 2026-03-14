@@ -55,7 +55,7 @@ exports.getOrders = async (req, res) => {
   try {
     const { startAt } = req.body;
     const filter = { userId: req.auth.userId };
-    const limit = 10;
+    const limit = req.body.limit || 10;
 
     let query = Order.find(filter).sort({ createdAt: -1 }).limit(limit);
     if (startAt) {
