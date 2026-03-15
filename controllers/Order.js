@@ -1,4 +1,5 @@
 const Order = require("../models/Order");
+const Product = require("../models/Product");
 const User = require("../models/User");
 const { sendNotificationToUser } = require("../utils/fcm");
 
@@ -32,6 +33,16 @@ exports.addOrder = async (req, res) => {
     });
 
     await order.save();
+
+    // Décrémenter le stock de chaque produit
+    for (const item of items) {
+      if (item.productId) {
+        await Product.updateOne(
+          { _id: item.productId },
+          { $inc: { stock: -item.quantity } }
+        );
+      }
+    }
 
     const user = await User.findById(req.auth.userId);
 
@@ -111,10 +122,24 @@ exports.updateStatus = async (req, res) => {
       return res.status(400).json({ status: 1, message: "Statut invalide" });
     }
 
+    const orderBefore = await Order.findById(req.params.id);
+
     await Order.updateOne(
       { _id: req.params.id },
       { $set: { status, updatedAt: Date.now() } }
     );
+
+    // Si annulation, remettre le stock
+    if (status === "annulee" && orderBefore.status !== "annulee") {
+      for (const item of orderBefore.items) {
+        if (item.productId) {
+          await Product.updateOne(
+            { _id: item.productId },
+            { $inc: { stock: item.quantity } }
+          );
+        }
+      }
+    }
 
     const order = await Order.findById(req.params.id);
 
