@@ -1,6 +1,7 @@
 const { GoogleAuth } = require("google-auth-library");
 const axios = require("axios");
 const DeviceToken = require("../models/DeviceToken");
+const Notification = require("../models/Notification");
 
 const MY_PROJECT_ID = process.env.FIREBASEPROJECTID;
 const FCM_ENDPOINT = `https://fcm.googleapis.com/v1/projects/${MY_PROJECT_ID}/messages:send`;
@@ -72,6 +73,19 @@ async function sendPushNotification(token, title, body, badge, data = {}) {
  * Nettoie automatiquement les tokens invalides.
  */
 async function sendNotificationToUser(userId, title, body, badge, data = {}) {
+  // Sauvegarder la notification en base
+  try {
+    await Notification.create({
+      userId,
+      title,
+      body,
+      type: data.type || "general",
+      data,
+    });
+  } catch (saveErr) {
+    console.log("Erreur sauvegarde notification:", saveErr.message);
+  }
+
   const tokens = await DeviceToken.find({ userId });
   if (tokens.length === 0) return;
 

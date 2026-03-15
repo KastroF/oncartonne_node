@@ -8,6 +8,9 @@ router.post("/add", auth, orderCtrl.addOrder);
 router.post("/getorders", auth, orderCtrl.getOrders);
 router.get("/getorder/:id", auth, orderCtrl.getOrder);
 
+// Payment callback (pas d'auth, appelé par la gateway)
+router.post("/payment-callback", orderCtrl.paymentCallback);
+
 // Admin
 router.get("/getall", auth, orderCtrl.getAllOrders);
 router.post("/updatestatus/:id", auth, orderCtrl.updateStatus);

@@ -54,13 +54,35 @@ exports.deleteProduct = async (req, res) => {
 
 exports.getProducts = async (req, res) => {
   try {
-    const { storeId, category } = req.query;
+    const { storeId, category, page, limit, search } = req.query;
     const filter = { visible: true };
     if (storeId) filter.storeId = storeId;
     if (category) filter.category = category;
+    if (search && search.trim().length > 0) {
+      filter.name = { $regex: search.trim(), $options: "i" };
+    }
 
-    const products = await Product.find(filter).populate("category").sort({ createdAt: -1 });
-    res.status(200).json({ status: 0, products });
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 10;
+    const skip = (pageNum - 1) * limitNum;
+
+    const total = await Product.countDocuments(filter);
+    const products = await Product.find(filter)
+      .populate("category")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum);
+
+    res.status(200).json({
+      status: 0,
+      products,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        hasMore: skip + products.length < total,
+      },
+    });
   } catch (err) {
     res.status(500).json({ status: 99, message: "Erreur serveur" });
   }
