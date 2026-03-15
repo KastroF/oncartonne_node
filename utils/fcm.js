@@ -86,13 +86,16 @@ async function sendNotificationToUser(userId, title, body, badge, data = {}) {
     console.log("Erreur sauvegarde notification:", saveErr.message);
   }
 
+  // Calculer le vrai badge (nombre de notifications non lues)
+  const unreadCount = await Notification.countDocuments({ userId, read: false });
+
   const tokens = await DeviceToken.find({ userId });
   if (tokens.length === 0) return;
 
   const invalidTokenIds = [];
 
   for (const entry of tokens) {
-    const result = await sendPushNotification(entry.token, title, body, badge, data);
+    const result = await sendPushNotification(entry.token, title, body, unreadCount, data);
 
     if (!result.success && ["UNREGISTERED", "NOT_FOUND"].includes(result.errorCode)) {
       console.log(`Token invalide pour user ${userId}, suppression...`);

@@ -6,6 +6,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String },
   phone: { type: String },
   role: { type: String, default: "user", enum: ["user", "admin", "staff"] },
+  storeId: { type: mongoose.Schema.Types.ObjectId, ref: "Store" },
   photo: { type: String },
   userActive: { type: Boolean, default: true },
   appleId: { type: String, unique: true, sparse: true },
