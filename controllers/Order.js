@@ -20,14 +20,43 @@ exports.addOrder = async (req, res) => {
       return res.status(400).json({ status: 1, message: "Le panier est vide" });
     }
 
+    // Vérifier et ajuster les stocks
+    const adjustedItems = [];
+    const adjustments = [];
+    let newTotal = 0;
+
+    for (const item of items) {
+      if (item.productId) {
+        const product = await Product.findById(item.productId);
+        if (!product || product.stock <= 0) {
+          adjustments.push({ name: item.name, requested: item.quantity, available: 0 });
+          continue; // Produit hors stock, on le retire
+        }
+        const available = product.stock;
+        const qty = Math.min(item.quantity, available);
+        if (qty < item.quantity) {
+          adjustments.push({ name: item.name, requested: item.quantity, available: qty });
+        }
+        adjustedItems.push({ ...item, quantity: qty });
+        newTotal += item.price * qty;
+      } else {
+        adjustedItems.push(item);
+        newTotal += item.price * item.quantity;
+      }
+    }
+
+    if (adjustedItems.length === 0) {
+      return res.status(400).json({ status: 1, message: "Tous les produits sont en rupture de stock" });
+    }
+
     const order = new Order({
       orderNumber: generateOrderNumber(),
       userId: req.auth.userId,
       storeId,
       storeName,
-      items,
-      total,
-      amountPaid: paymentType === "advance" ? Math.ceil(total * 0.3) : total,
+      items: adjustedItems,
+      total: newTotal,
+      amountPaid: paymentType === "advance" ? Math.ceil(newTotal * 0.3) : newTotal,
       paymentMethod,
       paymentType,
     });
@@ -35,7 +64,7 @@ exports.addOrder = async (req, res) => {
     await order.save();
 
     // Décrémenter le stock de chaque produit
-    for (const item of items) {
+    for (const item of adjustedItems) {
       if (item.productId) {
         await Product.updateOne(
           { _id: item.productId },
@@ -55,7 +84,7 @@ exports.addOrder = async (req, res) => {
       });
     }
 
-    res.status(201).json({ status: 0, order });
+    res.status(201).json({ status: 0, order, adjustments: adjustments.length > 0 ? adjustments : undefined });
   } catch (err) {
     console.log(err);
     res.status(500).json({ status: 99, message: "Erreur serveur" });
