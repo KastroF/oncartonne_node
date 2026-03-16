@@ -69,6 +69,7 @@ exports.signin = async (req, res) => {
     if (mode === "apple") {
       const user = await User.findOne({ appleId });
       if (!user) return res.status(404).json({ status: 2, message: "Utilisateur non trouvé" });
+      if (!user.userActive) return res.status(403).json({ status: 4, message: "Compte désactivé" });
       const token = jwt.sign({ userId: user._id }, process.env.CODETOKEN);
       return res.status(200).json({ status: 0, user, token });
     }
@@ -76,10 +77,7 @@ exports.signin = async (req, res) => {
     if (mode === "google") {
       const user = await User.findOne({ email });
       if (!user) return res.status(404).json({ status: 2, message: "Utilisateur non trouvé" });
-      if (!user.userActive) {
-        user.userActive = true;
-        await user.save();
-      }
+      if (!user.userActive) return res.status(403).json({ status: 4, message: "Compte désactivé" });
       const token = jwt.sign({ userId: user._id }, process.env.CODETOKEN);
       return res.status(200).json({ status: 0, user, token });
     }
