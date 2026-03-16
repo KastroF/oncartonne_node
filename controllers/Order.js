@@ -52,21 +52,42 @@ exports.addOrder = async (req, res) => {
     // Mobile money = brouillon (en attente de paiement), sinon = en_attente
     const isMobileMoney = paymentMethod === "airtel" || paymentMethod === "moov";
 
-    const order = new Order({
-      orderNumber: generateOrderNumber(),
-      userId: req.auth.userId,
-      storeId,
-      storeName,
-      items: adjustedItems,
-      total: newTotal,
-      amountPaid: paymentType === "advance" ? Math.ceil(newTotal * 0.3) : newTotal,
-      paymentMethod,
-      paymentType,
-      telephone: telephone || "",
-      status: isMobileMoney ? "brouillon" : "en_attente",
-    });
+    // Réutiliser un brouillon existant pour le même user/store au lieu d'en créer un nouveau
+    let order = null;
+    if (isMobileMoney) {
+      order = await Order.findOne({
+        userId: req.auth.userId,
+        storeId,
+        status: "brouillon",
+      }).sort({ createdAt: -1 });
+    }
 
-    await order.save();
+    if (order) {
+      // Mettre à jour le brouillon existant
+      order.items = adjustedItems;
+      order.total = newTotal;
+      order.amountPaid = paymentType === "advance" ? Math.ceil(newTotal * 0.3) : newTotal;
+      order.paymentMethod = paymentMethod;
+      order.paymentType = paymentType;
+      order.telephone = telephone || "";
+      order.paymentStatus = "pending";
+      await order.save();
+    } else {
+      order = new Order({
+        orderNumber: generateOrderNumber(),
+        userId: req.auth.userId,
+        storeId,
+        storeName,
+        items: adjustedItems,
+        total: newTotal,
+        amountPaid: paymentType === "advance" ? Math.ceil(newTotal * 0.3) : newTotal,
+        paymentMethod,
+        paymentType,
+        telephone: telephone || "",
+        status: isMobileMoney ? "brouillon" : "en_attente",
+      });
+      await order.save();
+    }
 
     // Décrémenter le stock seulement si ce n'est pas un brouillon
     if (!isMobileMoney) {
