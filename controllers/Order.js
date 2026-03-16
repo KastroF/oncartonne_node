@@ -52,18 +52,19 @@ exports.addOrder = async (req, res) => {
     // Mobile money = brouillon (en attente de paiement), sinon = en_attente
     const isMobileMoney = paymentMethod === "airtel" || paymentMethod === "moov";
 
-    // Réutiliser un brouillon existant pour le même user/store au lieu d'en créer un nouveau
+    // Si un orderId est fourni, réutiliser cette commande (même session panier)
     let order = null;
-    if (isMobileMoney) {
+    const { orderId } = req.body;
+    if (orderId) {
       order = await Order.findOne({
+        _id: orderId,
         userId: req.auth.userId,
-        storeId,
         status: "brouillon",
-      }).sort({ createdAt: -1 });
+      });
     }
 
     if (order) {
-      // Mettre à jour le brouillon existant
+      // Mettre à jour la commande existante
       order.items = adjustedItems;
       order.total = newTotal;
       order.amountPaid = paymentType === "advance" ? Math.ceil(newTotal * 0.3) : newTotal;
